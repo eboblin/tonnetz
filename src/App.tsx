@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import MinimalShiftTonnetz from './components/Tonnetz';
 
 export default function App() {
-  // Базовые ноты
+  // Base notes
   const rootNotes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
-  // Модификаторы аккордов с отображаемыми названиями
+  // Chord modifiers with display names
   const chordModifiers = [
     { value: "", label: "Major" },
     { value: "m", label: "Minor" },
@@ -17,38 +17,38 @@ export default function App() {
     { value: "sus4", label: "Suspended 4" }
   ];
 
-  // Состояния для выбранной ноты и модификатора
+  // States for selected note and modifier
   const [selectedRoot, setSelectedRoot] = useState("C");
   const [selectedModifier, setSelectedModifier] = useState("");
 
-  // Список сохраненных аккордов (изначально пустой)
+  // List of saved chords (initially empty)
   const [savedChords, setSavedChords] = useState<string[]>([]);
 
-  // Активный аккорд для отображения (изначально null)
+  // Active chord for display (initially null)
   const [activeChord, setActiveChord] = useState<string | null>(null);
 
-  // Размер узлов
+  // Node size
   const [nodeSize, setNodeSize] = useState(0.5);
 
-  // Время перехода
+  // Transition time
   const [transitionDuration, setTransitionDuration] = useState(300);
 
-  // Состояние воспроизведения
+  // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Время показа каждого аккорда (в миллисекундах)
+  // Time to display each chord (in milliseconds)
   const [chordDuration, setChordDuration] = useState(1000);
 
-  // Индекс текущего аккорда при воспроизведении
+  // Index of current chord during playback
   const [playIndex, setPlayIndex] = useState(0);
 
-  // Ref для хранения идентификатора таймера
+  // Ref for storing timer ID
   const timerRef = useRef<number | null>(null);
 
-  // Вычисляем текущий аккорд из выбранных значений
+  // Calculate current chord from selected values
   const currentChord = selectedRoot + selectedModifier;
 
-  // Функция добавления аккорда в список
+  // Function to add chord to the list
   const addChord = () => {
     if (!savedChords.includes(currentChord)) {
       setSavedChords([...savedChords, currentChord]);
@@ -56,35 +56,35 @@ export default function App() {
     setActiveChord(currentChord);
   };
 
-  // Функция удаления аккорда из списка
+  // Function to remove chord from the list
   const removeChord = (chord: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // Предотвращаем активацию аккорда при удалении
+    event.stopPropagation(); // Prevent chord activation when removing
 
     const newChords = savedChords.filter(c => c !== chord);
     setSavedChords(newChords);
 
-    // Если удаляем активный аккорд, сбрасываем активный аккорд
+    // If removing active chord, reset active chord
     if (activeChord === chord) {
       setActiveChord(null);
     }
 
-    // Если воспроизведение активно, останавливаем его
+    // If playback is active, stop it
     if (isPlaying && newChords.length < 2) {
       stopPlayback();
     }
   };
 
-  // Функция запуска воспроизведения
+  // Function to start playback
   const startPlayback = () => {
-    if (savedChords.length < 2) return; // Нужно минимум 2 аккорда для воспроизведения
+    if (savedChords.length < 2) return; // Need at least 2 chords for playback
 
     setIsPlaying(true);
-    // Начинаем с первого аккорда
+    // Start with the first chord
     setPlayIndex(0);
     setActiveChord(savedChords[0]);
   };
 
-  // Функция остановки воспроизведения
+  // Function to stop playback
   const stopPlayback = () => {
     setIsPlaying(false);
     if (timerRef.current !== null) {
@@ -93,7 +93,7 @@ export default function App() {
     }
   };
 
-  // Функция переключения воспроизведения
+  // Function to toggle playback
   const togglePlayback = () => {
     if (isPlaying) {
       stopPlayback();
@@ -102,24 +102,24 @@ export default function App() {
     }
   };
 
-  // Эффект для управления воспроизведением
+  // Effect for managing playback
   useEffect(() => {
     if (isPlaying && savedChords.length > 0) {
-      // Очищаем предыдущий таймер
+      // Clear previous timer
       if (timerRef.current !== null) {
         clearTimeout(timerRef.current);
       }
 
-      // Устанавливаем таймер для следующего аккорда
+      // Set timer for next chord
       timerRef.current = window.setTimeout(() => {
-        // Вычисляем следующий индекс
+        // Calculate next index
         const nextIndex = (playIndex + 1) % savedChords.length;
         setPlayIndex(nextIndex);
         setActiveChord(savedChords[nextIndex]);
       }, chordDuration);
     }
 
-    // Очистка при размонтировании
+    // Cleanup on unmount
     return () => {
       if (timerRef.current !== null) {
         clearTimeout(timerRef.current);
@@ -127,7 +127,7 @@ export default function App() {
     };
   }, [isPlaying, playIndex, savedChords, chordDuration]);
 
-  // Стили для селектов
+  // Styles for selects
   const selectStyle = {
     padding: '8px 12px',
     borderRadius: '4px',
@@ -139,7 +139,7 @@ export default function App() {
     marginRight: '10px'
   };
 
-  // Стили для кнопки добавления
+  // Styles for add button
   const addButtonStyle = {
     padding: '8px 16px',
     borderRadius: '4px',
@@ -151,7 +151,7 @@ export default function App() {
     fontWeight: 'bold' as const
   };
 
-  // Стили для кнопок аккордов
+  // Styles for chord buttons
   const chordButtonStyle = (isActive: boolean) => ({
     padding: '8px 16px',
     borderRadius: '4px',
@@ -164,7 +164,7 @@ export default function App() {
     position: 'relative' as const
   });
 
-  // Стили для кнопки удаления
+  // Styles for remove button
   const removeButtonStyle = {
     position: 'absolute' as const,
     top: '-8px',
@@ -183,19 +183,19 @@ export default function App() {
     padding: 0
   };
 
-  // Стили для кнопки воспроизведения
+  // Styles for play button
   const playButtonStyle = {
     padding: '8px 16px',
     borderRadius: '4px',
     border: 'none',
-    background: isPlaying ? '#ff4d4f' : '#4caf50',
+    background: isPlaying ? '#ff4d4f' : '#52c41a',
     color: 'white',
     fontSize: '16px',
     cursor: 'pointer',
-    marginLeft: '10px',
     display: 'flex',
     alignItems: 'center',
-    gap: '8px'
+    gap: '8px',
+    marginLeft: '16px'
   };
 
   return (
@@ -203,7 +203,7 @@ export default function App() {
       <h1>Tonnetz Chord Visualizer</h1>
 
       <div style={{ marginBottom: '30px' }}>
-        {/* Строка с выбиралками и кнопкой добавления */}
+        {/* Row with selectors and add button */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -236,11 +236,11 @@ export default function App() {
             onClick={addChord}
             style={addButtonStyle}
           >
-            Добавить аккорд
+            Add Chord
           </button>
         </div>
 
-        {/* Список сохраненных аккордов и кнопка воспроизведения */}
+        {/* List of saved chords and play button */}
         <div style={{
           marginBottom: '20px',
           display: 'flex',
@@ -254,7 +254,7 @@ export default function App() {
           }}>
             {savedChords.length === 0 ? (
               <div style={{ color: '#888', fontStyle: 'italic' }}>
-                Добавьте аккорды для отображения
+                Add chords to display
               </div>
             ) : (
               savedChords.map(chord => (
@@ -271,7 +271,7 @@ export default function App() {
                   <button
                     onClick={(e) => removeChord(chord, e)}
                     style={removeButtonStyle}
-                    title="Удалить аккорд"
+                    title="Remove chord"
                   >
                     ×
                   </button>
@@ -284,15 +284,15 @@ export default function App() {
             <button
               onClick={togglePlayback}
               style={playButtonStyle}
-              title={isPlaying ? "Остановить" : "Воспроизвести"}
+              title={isPlaying ? "Stop" : "Play"}
             >
               {isPlaying ? (
                 <>
-                  <span style={{ fontSize: '18px' }}>⏹</span> Стоп
+                  <span style={{ fontSize: '18px' }}>⏹</span> Stop
                 </>
               ) : (
                 <>
-                  <span style={{ fontSize: '18px' }}>▶</span> Играть
+                  <span style={{ fontSize: '18px' }}>▶</span> Play
                 </>
               )}
             </button>
@@ -308,12 +308,12 @@ export default function App() {
         }}>
           <h2 style={{ margin: 0 }}>
             {activeChord
-              ? `Активный аккорд: ${activeChord}`
-              : 'Аккорд не выбран'}
+              ? `Active Chord: ${activeChord}`
+              : 'No Chord Selected'}
           </h2>
         </div>
 
-        {/* Настройки отображения */}
+        {/* Display settings */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -322,7 +322,7 @@ export default function App() {
           marginBottom: '20px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label style={{ minWidth: '180px' }}>Размер узлов: {(nodeSize * 100).toFixed(0)}%</label>
+            <label style={{ minWidth: '180px' }}>Node Size: {(nodeSize * 100).toFixed(0)}%</label>
             <input
               type="range"
               min="0"
@@ -335,7 +335,7 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label style={{ minWidth: '180px' }}>Скорость перехода: {transitionDuration}мс</label>
+            <label style={{ minWidth: '180px' }}>Transition Speed: {transitionDuration}ms</label>
             <input
               type="range"
               min="0"
@@ -348,7 +348,7 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label style={{ minWidth: '180px' }}>Время на аккорд: {(chordDuration / 1000).toFixed(1)}с</label>
+            <label style={{ minWidth: '180px' }}>Chord Duration: {(chordDuration / 1000).toFixed(1)}s</label>
             <input
               type="range"
               min="200"
@@ -357,7 +357,7 @@ export default function App() {
               value={chordDuration}
               onChange={(e) => setChordDuration(parseInt(e.target.value))}
               style={{ flex: 1 }}
-              disabled={isPlaying} // Блокируем изменение во время воспроизведения
+              disabled={isPlaying} // Disable changes during playback
             />
           </div>
         </div>
