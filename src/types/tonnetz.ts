@@ -46,4 +46,15 @@ export interface TonnetzProps {
 
     // Анимация
     transitionDuration?: number; // Время перехода в миллисекундах
+
+    // Цветовой спектр
+    useColorSpectrum?: boolean; // Использовать ли цветовой спектр для нот
+
+    // Настройки для активных нот
+    activeSpectrumSaturation?: number; // Насыщенность цветов спектра для активных нот (0-1)
+    activeSpectrumBrightness?: number; // Яркость цветов спектра для активных нот (0-1)
+
+    // Настройки для неактивных нот
+    inactiveSpectrumSaturation?: number; // Насыщенность цветов спектра для неактивных нот (0-1)
+    inactiveSpectrumBrightness?: number; // Яркость цветов спектра для неактивных нот (0-1)
 } 

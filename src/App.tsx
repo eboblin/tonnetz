@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import MinimalShiftTonnetz from './components/Tonnetz';
+import ChordSelector from './components/ChordSelector';
+import ChordList from './components/ChordList';
+import ActiveChordDisplay from './components/ActiveChordDisplay';
+import DisplaySettings from './components/DisplaySettings';
 
 export default function App() {
   // Base notes
@@ -41,6 +45,11 @@ export default function App() {
 
   // Index of current chord during playback
   const [playIndex, setPlayIndex] = useState(0);
+
+  // Color spectrum settings
+  const [useColorSpectrum, setUseColorSpectrum] = useState(false);
+  const [spectrumSaturation, setSpectrumSaturation] = useState(0.8);
+  const [spectrumBrightness, setSpectrumBrightness] = useState(0.6);
 
   // Ref for storing timer ID
   const timerRef = useRef<number | null>(null);
@@ -127,240 +136,61 @@ export default function App() {
     };
   }, [isPlaying, playIndex, savedChords, chordDuration]);
 
-  // Styles for selects
-  const selectStyle = {
-    padding: '8px 12px',
-    borderRadius: '4px',
-    border: '1px solid #444',
-    background: '#1a1a1a',
-    color: 'white',
-    fontSize: '16px',
-    cursor: 'pointer',
-    marginRight: '10px'
-  };
-
-  // Styles for add button
-  const addButtonStyle = {
-    padding: '8px 16px',
-    borderRadius: '4px',
-    border: 'none',
-    background: '#646cff',
-    color: 'white',
-    fontSize: '16px',
-    cursor: 'pointer',
-    fontWeight: 'bold' as const
-  };
-
-  // Styles for chord buttons
-  const chordButtonStyle = (isActive: boolean) => ({
-    padding: '8px 16px',
-    borderRadius: '4px',
-    border: 'none',
-    background: isActive ? '#646cff' : '#1a1a1a',
-    color: 'white',
-    fontSize: '16px',
-    cursor: 'pointer',
-    margin: '0 8px 8px 0',
-    position: 'relative' as const
-  });
-
-  // Styles for remove button
-  const removeButtonStyle = {
-    position: 'absolute' as const,
-    top: '-8px',
-    right: '-8px',
-    width: '20px',
-    height: '20px',
-    borderRadius: '50%',
-    background: '#ff4d4f',
-    color: 'white',
-    border: 'none',
-    fontSize: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    padding: 0
-  };
-
-  // Styles for play button
-  const playButtonStyle = {
-    padding: '8px 16px',
-    borderRadius: '4px',
-    border: 'none',
-    background: isPlaying ? '#ff4d4f' : '#52c41a',
-    color: 'white',
-    fontSize: '16px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    marginLeft: '16px'
-  };
-
   return (
-    <div style={{ width: '800px', margin: '0 auto' }}>
-      <h1>Tonnetz Chord Visualizer</h1>
+    <div style={{
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '20px',
+      fontFamily: 'Arial, sans-serif',
+      color: 'white',
+      background: '#121212'
+    }}>
+      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>
+        Interactive Tonnetz Explorer
+      </h1>
 
       <div style={{ marginBottom: '30px' }}>
-        {/* Row with selectors and add button */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginBottom: '20px',
-          gap: '10px'
-        }}>
-          <select
-            value={selectedRoot}
-            onChange={(e) => setSelectedRoot(e.target.value)}
-            style={selectStyle}
-          >
-            {rootNotes.map(note => (
-              <option key={note} value={note}>{note}</option>
-            ))}
-          </select>
+        {/* Chord Selection */}
+        <ChordSelector
+          rootNotes={rootNotes}
+          chordModifiers={chordModifiers}
+          selectedRoot={selectedRoot}
+          selectedModifier={selectedModifier}
+          setSelectedRoot={setSelectedRoot}
+          setSelectedModifier={setSelectedModifier}
+          addChord={addChord}
+        />
 
-          <select
-            value={selectedModifier}
-            onChange={(e) => setSelectedModifier(e.target.value)}
-            style={selectStyle}
-          >
-            {chordModifiers.map(modifier => (
-              <option key={modifier.value} value={modifier.value}>
-                {modifier.label}
-              </option>
-            ))}
-          </select>
+        {/* Chord List */}
+        <ChordList
+          savedChords={savedChords}
+          activeChord={activeChord}
+          setActiveChord={setActiveChord}
+          removeChord={removeChord}
+          isPlaying={isPlaying}
+          togglePlayback={togglePlayback}
+          stopPlayback={stopPlayback}
+        />
 
-          <button
-            onClick={addChord}
-            style={addButtonStyle}
-          >
-            Add Chord
-          </button>
-        </div>
+        {/* Active Chord Display */}
+        <ActiveChordDisplay activeChord={activeChord} />
 
-        {/* List of saved chords and play button */}
-        <div style={{
-          marginBottom: '20px',
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}>
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            flex: 1
-          }}>
-            {savedChords.length === 0 ? (
-              <div style={{ color: '#888', fontStyle: 'italic' }}>
-                Add chords to display
-              </div>
-            ) : (
-              savedChords.map(chord => (
-                <div key={chord} style={{ position: 'relative' }}>
-                  <button
-                    onClick={() => {
-                      setActiveChord(chord);
-                      if (isPlaying) stopPlayback();
-                    }}
-                    style={chordButtonStyle(activeChord === chord)}
-                  >
-                    {chord}
-                  </button>
-                  <button
-                    onClick={(e) => removeChord(chord, e)}
-                    style={removeButtonStyle}
-                    title="Remove chord"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-
-          {savedChords.length >= 2 && (
-            <button
-              onClick={togglePlayback}
-              style={playButtonStyle}
-              title={isPlaying ? "Stop" : "Play"}
-            >
-              {isPlaying ? (
-                <>
-                  <span style={{ fontSize: '18px' }}>⏹</span> Stop
-                </>
-              ) : (
-                <>
-                  <span style={{ fontSize: '18px' }}>▶</span> Play
-                </>
-              )}
-            </button>
-          )}
-        </div>
-
-        <div style={{
-          marginTop: '20px',
-          padding: '16px',
-          background: '#2a2a2a',
-          borderRadius: '4px',
-          textAlign: 'center'
-        }}>
-          <h2 style={{ margin: 0 }}>
-            {activeChord
-              ? `Active Chord: ${activeChord}`
-              : 'No Chord Selected'}
-          </h2>
-        </div>
-
-        {/* Display settings */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '15px',
-          marginTop: '30px',
-          marginBottom: '20px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label style={{ minWidth: '180px' }}>Node Size: {(nodeSize * 100).toFixed(0)}%</label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={nodeSize}
-              onChange={(e) => setNodeSize(parseFloat(e.target.value))}
-              style={{ flex: 1 }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label style={{ minWidth: '180px' }}>Transition Speed: {transitionDuration}ms</label>
-            <input
-              type="range"
-              min="0"
-              max="1000"
-              step="50"
-              value={transitionDuration}
-              onChange={(e) => setTransitionDuration(parseInt(e.target.value))}
-              style={{ flex: 1 }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label style={{ minWidth: '180px' }}>Chord Duration: {(chordDuration / 1000).toFixed(1)}s</label>
-            <input
-              type="range"
-              min="200"
-              max="5000"
-              step="100"
-              value={chordDuration}
-              onChange={(e) => setChordDuration(parseInt(e.target.value))}
-              style={{ flex: 1 }}
-              disabled={isPlaying} // Disable changes during playback
-            />
-          </div>
-        </div>
+        {/* Display Settings */}
+        <DisplaySettings
+          nodeSize={nodeSize}
+          setNodeSize={setNodeSize}
+          transitionDuration={transitionDuration}
+          setTransitionDuration={setTransitionDuration}
+          chordDuration={chordDuration}
+          setChordDuration={setChordDuration}
+          isPlaying={isPlaying}
+          useColorSpectrum={useColorSpectrum}
+          setUseColorSpectrum={setUseColorSpectrum}
+          spectrumSaturation={spectrumSaturation}
+          setSpectrumSaturation={setSpectrumSaturation}
+          spectrumBrightness={spectrumBrightness}
+          setSpectrumBrightness={setSpectrumBrightness}
+        />
       </div>
 
       <div style={{ width: '100%', height: '500px' }}>
@@ -370,6 +200,9 @@ export default function App() {
           cols={11}
           nodeSize={nodeSize}
           transitionDuration={transitionDuration}
+          useColorSpectrum={useColorSpectrum}
+          spectrumSaturation={spectrumSaturation}
+          spectrumBrightness={spectrumBrightness}
         />
       </div>
     </div>

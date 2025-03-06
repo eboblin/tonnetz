@@ -3,10 +3,82 @@ import { chordsToNotes } from "../utils/chordParser";
 import {
     generateTonnetzData,
     calculateScaling,
-    VIRTUAL_STEP
+    VIRTUAL_STEP,
+    NOTE_NAMES
 } from "../utils/tonnetzMath";
 import { TonnetzProps, NodeData, EdgeData, VirtualBounds } from "../types/tonnetz";
 import "./Tonnetz.css"; // Импортируем CSS файл для стилей
+
+// Функция для получения цвета из спектра для ноты
+function getNoteColor(noteName: string, saturation: number = 1, brightness: number = 1, isHighlighted: boolean = false) {
+    // Получаем индекс ноты в 12-тоновой гамме
+    const noteIndex = NOTE_NAMES.indexOf(noteName.replace(/\d+$/, ''));
+
+    if (noteIndex === -1) return "#CCCCCC"; // Если нота не найдена, возвращаем серый
+
+    // Вычисляем оттенок (hue) на основе индекса ноты (0-360 градусов)
+    const hue = (noteIndex * 30) % 360; // 30 градусов на ноту
+
+    // Делаем более явную разницу между выделенными и невыделенными нотами
+    const actualSaturation = isHighlighted ? saturation : saturation * 0.3; // Уменьшаем насыщенность сильнее
+    const actualBrightness = isHighlighted ? brightness : Math.min(0.95, brightness * 1.5); // Увеличиваем яркость
+
+    // Преобразуем HSL в RGB
+    return hslToRgb(hue, actualSaturation, actualBrightness);
+}
+
+// Функция для получения инверсного цвета
+function getInverseColor(color: string): string {
+    // Если цвет в формате #RRGGBB
+    if (color.startsWith('#') && color.length === 7) {
+        // Преобразуем в RGB
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+
+        // Вычисляем яркость
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+        // Возвращаем черный или белый в зависимости от яркости
+        return brightness > 128 ? '#000000' : '#FFFFFF';
+    }
+
+    // Если формат цвета неизвестен, возвращаем белый или черный
+    return color === 'white' ? 'black' : 'white';
+}
+
+// Функция для преобразования HSL в RGB в формате #RRGGBB
+function hslToRgb(h: number, s: number, l: number): string {
+    h /= 360;
+    let r, g, b;
+
+    if (s === 0) {
+        r = g = b = l; // achromatic
+    } else {
+        const hue2rgb = (p: number, q: number, t: number) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1 / 6) return p + (q - p) * 6 * t;
+            if (t < 1 / 2) return q;
+            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+            return p;
+        };
+
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1 / 3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1 / 3);
+    }
+
+    // Преобразуем в hex
+    const toHex = (x: number) => {
+        const hex = Math.round(x * 255).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    };
+
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
 
 export default function MinimalShiftTonnetz({
     highlightNotes = [],
@@ -16,14 +88,19 @@ export default function MinimalShiftTonnetz({
     nodeSize = 0.5, // Значение по умолчанию - средний размер
 
     // Значения по умолчанию для цветов
-    highlightedNodeColor = "blue",
+    highlightedNodeColor = "#ff00ff",
     nodeColor = "white",
     textColor = "black",
     edgeColor = "black",
     nodeStrokeColor = "black",
 
     // Время перехода в миллисекундах
-    transitionDuration = 300
+    transitionDuration = 300,
+
+    // Цветовой спектр
+    useColorSpectrum = false,
+    spectrumSaturation = 0.8,
+    spectrumBrightness = 0.6
 }: TonnetzProps) {
     // Используем useMemo для создания allHighlightedNotes, чтобы избежать пересоздания при каждом рендере
     const allHighlightedNotes = useMemo(() => {
@@ -136,13 +213,28 @@ export default function MinimalShiftTonnetz({
                     // Размер шрифта пропорционален размеру узла
                     const fontSize = nodeRadius * 0.9;
 
+                    // Определяем цвет узла
+                    let fillColor;
+                    if (useColorSpectrum) {
+                        // Используем цветовой спектр
+                        fillColor = getNoteColor(
+                            nd.noteName,
+                            spectrumSaturation,
+                            spectrumBrightness,
+                            isHighlighted
+                        );
+                    } else {
+                        // Используем обычные цвета
+                        fillColor = isHighlighted ? highlightedNodeColor : nodeColor;
+                    }
+
                     return (
                         <g key={i}>
                             <circle
                                 cx={x}
                                 cy={y}
                                 r={nodeRadius}
-                                fill={isHighlighted ? highlightedNodeColor : nodeColor}
+                                fill={fillColor}
                                 stroke={nodeStrokeColor}
                                 strokeWidth={1}
                                 style={transitionStyle}
@@ -154,7 +246,8 @@ export default function MinimalShiftTonnetz({
                                 textAnchor="middle"
                                 dominantBaseline="middle"
                                 fontSize={fontSize}
-                                fill={textColor}
+                                fill={isHighlighted ? getInverseColor(fillColor) : textColor}
+                                fontWeight={isHighlighted ? "bold" : "normal"}
                             >
                                 {nd.noteName}
                             </text>
