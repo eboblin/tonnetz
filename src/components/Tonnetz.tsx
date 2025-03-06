@@ -10,7 +10,14 @@ import { TonnetzProps, NodeData, EdgeData, VirtualBounds } from "../types/tonnet
 import "./Tonnetz.css"; // Импортируем CSS файл для стилей
 
 // Функция для получения цвета из спектра для ноты
-function getNoteColor(noteName: string, saturation: number = 1, brightness: number = 1, isHighlighted: boolean = false) {
+function getNoteColor(
+    noteName: string,
+    isHighlighted: boolean = false,
+    activeSaturation: number = 0.8,
+    activeBrightness: number = 0.6,
+    inactiveSaturation: number = 0.3,
+    inactiveBrightness: number = 0.9
+) {
     // Получаем индекс ноты в 12-тоновой гамме
     const noteIndex = NOTE_NAMES.indexOf(noteName.replace(/\d+$/, ''));
 
@@ -19,12 +26,12 @@ function getNoteColor(noteName: string, saturation: number = 1, brightness: numb
     // Вычисляем оттенок (hue) на основе индекса ноты (0-360 градусов)
     const hue = (noteIndex * 30) % 360; // 30 градусов на ноту
 
-    // Делаем более явную разницу между выделенными и невыделенными нотами
-    const actualSaturation = isHighlighted ? saturation : saturation * 0.3; // Уменьшаем насыщенность сильнее
-    const actualBrightness = isHighlighted ? brightness : Math.min(0.95, brightness * 1.5); // Увеличиваем яркость
+    // Используем разные настройки для активных и неактивных нот
+    const saturation = isHighlighted ? activeSaturation : inactiveSaturation;
+    const brightness = isHighlighted ? activeBrightness : inactiveBrightness;
 
     // Преобразуем HSL в RGB
-    return hslToRgb(hue, actualSaturation, actualBrightness);
+    return hslToRgb(hue, saturation, brightness);
 }
 
 // Функция для получения инверсного цвета
@@ -98,9 +105,18 @@ export default function MinimalShiftTonnetz({
     transitionDuration = 300,
 
     // Цветовой спектр
-    useColorSpectrum = false,
-    spectrumSaturation = 0.8,
-    spectrumBrightness = 0.6
+    useColorSpectrum = true,
+
+    // Настройки для активных нот
+    activeSpectrumSaturation = 0.6,
+    activeSpectrumBrightness = 0.4,
+
+    // Настройки для неактивных нот
+    inactiveSpectrumSaturation = 0.2,
+    inactiveSpectrumBrightness = 0.8,
+
+    // Прозрачность неактивных нот (новый параметр)
+    inactiveOpacity = 0.65
 }: TonnetzProps) {
     // Используем useMemo для создания allHighlightedNotes, чтобы избежать пересоздания при каждом рендере
     const allHighlightedNotes = useMemo(() => {
@@ -126,9 +142,15 @@ export default function MinimalShiftTonnetz({
     // Состояния для хранения данных Tonnetz
     const [nodes, setNodes] = useState<NodeData[]>([]);
     const [edges, setEdges] = useState<EdgeData[]>([]);
-    const [virtualBounds, setVirtualBounds] = useState<VirtualBounds>({
+    const [bounds, setBounds] = useState<VirtualBounds>({
         minX: 0, maxX: 0, minY: 0, maxY: 0
     });
+
+    // Состояния для масштабирования и смещения
+    const [scale, setScale] = useState(1);
+    const [scaledHeight, setScaledHeight] = useState(400);
+    const [offsetX, setOffsetX] = useState(0);
+    const [offsetY, setOffsetY] = useState(0);
 
     // Отслеживаем размер контейнера
     useEffect(() => {
@@ -151,17 +173,23 @@ export default function MinimalShiftTonnetz({
         const { nodes, edges, virtualBounds } = generateTonnetzData(rows, cols);
         setNodes(nodes);
         setEdges(edges);
-        setVirtualBounds(virtualBounds);
+        setBounds(virtualBounds);
     }, [rows, cols]);
 
-    // Вычисляем масштаб и смещение для отображения
-    const { scale, scaledHeight, offsetX, offsetY } = useMemo(() => {
-        return calculateScaling(virtualBounds, containerWidth);
-    }, [virtualBounds, containerWidth]);
+    // Обновляем масштаб и смещение при изменении размера контейнера или границ
+    useEffect(() => {
+        if (containerWidth > 0 && bounds.maxX > bounds.minX) {
+            const { scale, scaledHeight, offsetX, offsetY } = calculateScaling(bounds, containerWidth);
+            setScale(scale);
+            setOffsetX(offsetX);
+            setOffsetY(offsetY);
+            setScaledHeight(scaledHeight);
+        }
+    }, [containerWidth, bounds]);
 
     // Создаем стиль для перехода
     const transitionStyle = {
-        transition: `fill ${transitionDuration}ms ease-in-out`
+        transition: `fill ${transitionDuration}ms ease-in-out, opacity ${transitionDuration}ms ease-in-out`
     };
 
     return (
@@ -184,6 +212,11 @@ export default function MinimalShiftTonnetz({
                     const x2 = (toNode.virtualX + offsetX) * scale;
                     const y2 = (toNode.virtualY + offsetY) * scale;
 
+                    // Определяем, является ли ребро соединением между выделенными нотами
+                    const fromHighlighted = highlightSet.has(fromNode.noteName.toUpperCase());
+                    const toHighlighted = highlightSet.has(toNode.noteName.toUpperCase());
+                    const edgeOpacity = (fromHighlighted && toHighlighted) ? 1 : inactiveOpacity;
+
                     return (
                         <line
                             key={idx}
@@ -193,6 +226,8 @@ export default function MinimalShiftTonnetz({
                             y2={y2}
                             stroke={edgeColor}
                             strokeWidth={1}
+                            opacity={edgeOpacity}
+                            style={transitionStyle}
                         />
                     );
                 })}
@@ -216,27 +251,46 @@ export default function MinimalShiftTonnetz({
                     // Определяем цвет узла
                     let fillColor;
                     if (useColorSpectrum) {
-                        // Используем цветовой спектр
+                        // Используем цветовой спектр с отдельными настройками для активных и неактивных нот
                         fillColor = getNoteColor(
                             nd.noteName,
-                            spectrumSaturation,
-                            spectrumBrightness,
-                            isHighlighted
+                            isHighlighted,
+                            activeSpectrumSaturation,
+                            activeSpectrumBrightness,
+                            inactiveSpectrumSaturation,
+                            inactiveSpectrumBrightness
                         );
                     } else {
                         // Используем обычные цвета
                         fillColor = isHighlighted ? highlightedNodeColor : nodeColor;
                     }
 
+                    // Устанавливаем прозрачность в зависимости от того, выделена нота или нет
+                    const nodeOpacity = isHighlighted ? 1 : inactiveOpacity;
+
                     return (
                         <g key={i}>
+                            {/* Добавляем эффект свечения для выделенных нот */}
+                            {isHighlighted && (
+                                <circle
+                                    cx={x}
+                                    cy={y}
+                                    r={nodeRadius * 1.2}
+                                    fill="none"
+                                    stroke={useColorSpectrum ? fillColor : highlightedNodeColor}
+                                    strokeWidth={2}
+                                    opacity={0.5}
+                                    style={transitionStyle}
+                                />
+                            )}
                             <circle
                                 cx={x}
                                 cy={y}
                                 r={nodeRadius}
                                 fill={fillColor}
-                                stroke={nodeStrokeColor}
-                                strokeWidth={1}
+                                stroke={isHighlighted ? (useColorSpectrum ? fillColor : highlightedNodeColor) : nodeStrokeColor}
+                                strokeWidth={isHighlighted ? 2 : 1}
+                                opacity={nodeOpacity}
                                 style={transitionStyle}
                                 className="tonnetz-node"
                             />
@@ -248,6 +302,8 @@ export default function MinimalShiftTonnetz({
                                 fontSize={fontSize}
                                 fill={isHighlighted ? getInverseColor(fillColor) : textColor}
                                 fontWeight={isHighlighted ? "bold" : "normal"}
+                                opacity={nodeOpacity}
+                                style={transitionStyle}
                             >
                                 {nd.noteName}
                             </text>

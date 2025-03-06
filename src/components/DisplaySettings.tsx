@@ -5,15 +5,21 @@ interface DisplaySettingsProps {
     setNodeSize: (size: number) => void;
     transitionDuration: number;
     setTransitionDuration: (duration: number) => void;
-    chordDuration: number;
-    setChordDuration: (duration: number) => void;
+    bpm: number;
+    setBpm: (bpm: number) => void;
     isPlaying: boolean;
     useColorSpectrum: boolean;
     setUseColorSpectrum: (use: boolean) => void;
-    spectrumSaturation: number;
-    setSpectrumSaturation: (saturation: number) => void;
-    spectrumBrightness: number;
-    setSpectrumBrightness: (brightness: number) => void;
+    activeSpectrumSaturation: number;
+    setActiveSpectrumSaturation: (saturation: number) => void;
+    activeSpectrumBrightness: number;
+    setActiveSpectrumBrightness: (brightness: number) => void;
+    inactiveSpectrumSaturation: number;
+    setInactiveSpectrumSaturation: (saturation: number) => void;
+    inactiveSpectrumBrightness: number;
+    setInactiveSpectrumBrightness: (brightness: number) => void;
+    inactiveOpacity: number;
+    setInactiveOpacity: (opacity: number) => void;
 }
 
 const DisplaySettings: React.FC<DisplaySettingsProps> = ({
@@ -21,15 +27,21 @@ const DisplaySettings: React.FC<DisplaySettingsProps> = ({
     setNodeSize,
     transitionDuration,
     setTransitionDuration,
-    chordDuration,
-    setChordDuration,
+    bpm,
+    setBpm,
     isPlaying,
     useColorSpectrum,
     setUseColorSpectrum,
-    spectrumSaturation,
-    setSpectrumSaturation,
-    spectrumBrightness,
-    setSpectrumBrightness
+    activeSpectrumSaturation,
+    setActiveSpectrumSaturation,
+    activeSpectrumBrightness,
+    setActiveSpectrumBrightness,
+    inactiveSpectrumSaturation,
+    setInactiveSpectrumSaturation,
+    inactiveSpectrumBrightness,
+    setInactiveSpectrumBrightness,
+    inactiveOpacity,
+    setInactiveOpacity
 }) => {
     const checkboxStyle = {
         marginRight: '10px',
@@ -71,64 +83,96 @@ const DisplaySettings: React.FC<DisplaySettingsProps> = ({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <label style={{ minWidth: '180px' }}>Chord Duration: {(chordDuration / 1000).toFixed(1)}s</label>
+                <label style={{ minWidth: '180px' }}>Playback Tempo: {bpm} BPM</label>
                 <input
                     type="range"
-                    min="200"
-                    max="5000"
-                    step="100"
-                    value={chordDuration}
-                    onChange={(e) => setChordDuration(parseInt(e.target.value))}
+                    min="30"
+                    max="240"
+                    step="1"
+                    value={bpm}
+                    onChange={(e) => setBpm(parseInt(e.target.value))}
+                    disabled={isPlaying}
                     style={{ flex: 1 }}
-                    disabled={isPlaying} // Disable changes during playback
                 />
             </div>
 
-            {/* Color spectrum settings */}
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column' as 'column',
-                gap: '10px',
-                padding: '15px',
-                background: '#2a2a2a',
-                borderRadius: '4px',
-                marginTop: '10px'
-            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ minWidth: '180px' }}>Inactive Opacity: {(inactiveOpacity * 100).toFixed(0)}%</label>
+                <input
+                    type="range"
+                    min="0.2"
+                    max="1"
+                    step="0.05"
+                    value={inactiveOpacity}
+                    onChange={(e) => setInactiveOpacity(parseFloat(e.target.value))}
+                    style={{ flex: 1 }}
+                />
+            </div>
+
+            <div style={{ marginTop: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <input
                         type="checkbox"
+                        id="useColorSpectrum"
                         checked={useColorSpectrum}
                         onChange={(e) => setUseColorSpectrum(e.target.checked)}
                         style={checkboxStyle}
-                        id="useColorSpectrum"
                     />
                     <label htmlFor="useColorSpectrum">Use Color Spectrum</label>
                 </div>
 
                 {useColorSpectrum && (
                     <>
+                        <h4 style={{ marginTop: '10px', marginBottom: '5px' }}>Active Notes</h4>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <label style={{ minWidth: '180px' }}>Color Saturation: {(spectrumSaturation * 100).toFixed(0)}%</label>
+                            <label style={{ minWidth: '180px' }}>Saturation: {(activeSpectrumSaturation * 100).toFixed(0)}%</label>
                             <input
                                 type="range"
                                 min="0"
                                 max="1"
                                 step="0.05"
-                                value={spectrumSaturation}
-                                onChange={(e) => setSpectrumSaturation(parseFloat(e.target.value))}
+                                value={activeSpectrumSaturation}
+                                onChange={(e) => setActiveSpectrumSaturation(parseFloat(e.target.value))}
                                 style={{ flex: 1 }}
                             />
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <label style={{ minWidth: '180px' }}>Color Brightness: {(spectrumBrightness * 100).toFixed(0)}%</label>
+                            <label style={{ minWidth: '180px' }}>Brightness: {(activeSpectrumBrightness * 100).toFixed(0)}%</label>
                             <input
                                 type="range"
                                 min="0.2"
                                 max="1"
                                 step="0.05"
-                                value={spectrumBrightness}
-                                onChange={(e) => setSpectrumBrightness(parseFloat(e.target.value))}
+                                value={activeSpectrumBrightness}
+                                onChange={(e) => setActiveSpectrumBrightness(parseFloat(e.target.value))}
+                                style={{ flex: 1 }}
+                            />
+                        </div>
+
+                        <h4 style={{ marginTop: '15px', marginBottom: '5px' }}>Inactive Notes</h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <label style={{ minWidth: '180px' }}>Saturation: {(inactiveSpectrumSaturation * 100).toFixed(0)}%</label>
+                            <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.05"
+                                value={inactiveSpectrumSaturation}
+                                onChange={(e) => setInactiveSpectrumSaturation(parseFloat(e.target.value))}
+                                style={{ flex: 1 }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <label style={{ minWidth: '180px' }}>Brightness: {(inactiveSpectrumBrightness * 100).toFixed(0)}%</label>
+                            <input
+                                type="range"
+                                min="0.2"
+                                max="1"
+                                step="0.05"
+                                value={inactiveSpectrumBrightness}
+                                onChange={(e) => setInactiveSpectrumBrightness(parseFloat(e.target.value))}
                                 style={{ flex: 1 }}
                             />
                         </div>

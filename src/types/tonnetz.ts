@@ -57,4 +57,7 @@ export interface TonnetzProps {
     // Настройки для неактивных нот
     inactiveSpectrumSaturation?: number; // Насыщенность цветов спектра для неактивных нот (0-1)
     inactiveSpectrumBrightness?: number; // Яркость цветов спектра для неактивных нот (0-1)
+
+    // Прозрачность неактивных нот
+    inactiveOpacity?: number; // Прозрачность неактивных нот (0-1)
 } 

@@ -40,22 +40,36 @@ export default function App() {
   // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Time to display each chord (in milliseconds)
-  const [chordDuration, setChordDuration] = useState(1000);
+  // BPM
+  const [bpm, setBpm] = useState(60); // 60 ударов в минуту по умолчанию
 
   // Index of current chord during playback
   const [playIndex, setPlayIndex] = useState(0);
 
   // Color spectrum settings
-  const [useColorSpectrum, setUseColorSpectrum] = useState(false);
+  const [useColorSpectrum, setUseColorSpectrum] = useState(true);
   const [spectrumSaturation, setSpectrumSaturation] = useState(0.8);
   const [spectrumBrightness, setSpectrumBrightness] = useState(0.6);
+
+  // Active notes color settings
+  const [activeSpectrumSaturation, setActiveSpectrumSaturation] = useState(0.6);
+  const [activeSpectrumBrightness, setActiveSpectrumBrightness] = useState(0.4);
+
+  // Inactive notes color settings
+  const [inactiveSpectrumSaturation, setInactiveSpectrumSaturation] = useState(0.2);
+  const [inactiveSpectrumBrightness, setInactiveSpectrumBrightness] = useState(0.8);
+
+  // Opacity for inactive notes
+  const [inactiveOpacity, setInactiveOpacity] = useState(0.65);
 
   // Ref for storing timer ID
   const timerRef = useRef<number | null>(null);
 
   // Calculate current chord from selected values
   const currentChord = selectedRoot + selectedModifier;
+
+  // Функция для преобразования BPM в миллисекунды
+  const bpmToMs = (bpm: number) => Math.round(60000 / bpm);
 
   // Function to add chord to the list
   const addChord = () => {
@@ -83,14 +97,36 @@ export default function App() {
     }
   };
 
-  // Function to start playback
-  const startPlayback = () => {
-    if (savedChords.length < 2) return; // Need at least 2 chords for playback
+  // Обновляем функцию playChords, чтобы использовать BPM
+  const playChords = () => {
+    if (savedChords.length < 2) return;
 
-    setIsPlaying(true);
-    // Start with the first chord
-    setPlayIndex(0);
-    setActiveChord(savedChords[0]);
+    const nextIndex = (playIndex + 1) % savedChords.length;
+    setActiveChord(savedChords[nextIndex]);
+    setPlayIndex(nextIndex);
+
+    // Используем bpmToMs для расчета времени задержки
+    timerRef.current = window.setTimeout(playChords, bpmToMs(bpm));
+  };
+
+  // Обновляем togglePlayback, чтобы использовать BPM
+  const togglePlayback = () => {
+    if (isPlaying) {
+      // Остановка воспроизведения
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      setIsPlaying(false);
+    } else {
+      // Начало воспроизведения
+      setIsPlaying(true);
+      setPlayIndex(0);
+      setActiveChord(savedChords[0]);
+
+      // Используем bpmToMs для расчета времени задержки
+      timerRef.current = window.setTimeout(playChords, bpmToMs(bpm));
+    }
   };
 
   // Function to stop playback
@@ -99,15 +135,6 @@ export default function App() {
     if (timerRef.current !== null) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
-    }
-  };
-
-  // Function to toggle playback
-  const togglePlayback = () => {
-    if (isPlaying) {
-      stopPlayback();
-    } else {
-      startPlayback();
     }
   };
 
@@ -125,7 +152,7 @@ export default function App() {
         const nextIndex = (playIndex + 1) % savedChords.length;
         setPlayIndex(nextIndex);
         setActiveChord(savedChords[nextIndex]);
-      }, chordDuration);
+      }, bpmToMs(bpm));
     }
 
     // Cleanup on unmount
@@ -134,7 +161,7 @@ export default function App() {
         clearTimeout(timerRef.current);
       }
     };
-  }, [isPlaying, playIndex, savedChords, chordDuration]);
+  }, [isPlaying, playIndex, savedChords, bpm]);
 
   return (
     <div style={{
@@ -181,15 +208,21 @@ export default function App() {
           setNodeSize={setNodeSize}
           transitionDuration={transitionDuration}
           setTransitionDuration={setTransitionDuration}
-          chordDuration={chordDuration}
-          setChordDuration={setChordDuration}
+          bpm={bpm}
+          setBpm={setBpm}
           isPlaying={isPlaying}
           useColorSpectrum={useColorSpectrum}
           setUseColorSpectrum={setUseColorSpectrum}
-          spectrumSaturation={spectrumSaturation}
-          setSpectrumSaturation={setSpectrumSaturation}
-          spectrumBrightness={spectrumBrightness}
-          setSpectrumBrightness={setSpectrumBrightness}
+          activeSpectrumSaturation={activeSpectrumSaturation}
+          setActiveSpectrumSaturation={setActiveSpectrumSaturation}
+          activeSpectrumBrightness={activeSpectrumBrightness}
+          setActiveSpectrumBrightness={setActiveSpectrumBrightness}
+          inactiveSpectrumSaturation={inactiveSpectrumSaturation}
+          setInactiveSpectrumSaturation={setInactiveSpectrumSaturation}
+          inactiveSpectrumBrightness={inactiveSpectrumBrightness}
+          setInactiveSpectrumBrightness={setInactiveSpectrumBrightness}
+          inactiveOpacity={inactiveOpacity}
+          setInactiveOpacity={setInactiveOpacity}
         />
       </div>
 
@@ -201,8 +234,11 @@ export default function App() {
           nodeSize={nodeSize}
           transitionDuration={transitionDuration}
           useColorSpectrum={useColorSpectrum}
-          spectrumSaturation={spectrumSaturation}
-          spectrumBrightness={spectrumBrightness}
+          activeSpectrumSaturation={activeSpectrumSaturation}
+          activeSpectrumBrightness={activeSpectrumBrightness}
+          inactiveSpectrumSaturation={inactiveSpectrumSaturation}
+          inactiveSpectrumBrightness={inactiveSpectrumBrightness}
+          inactiveOpacity={inactiveOpacity}
         />
       </div>
     </div>
