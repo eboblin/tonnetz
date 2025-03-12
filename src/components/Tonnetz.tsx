@@ -7,6 +7,7 @@ import {
     NOTE_NAMES
 } from "../utils/tonnetzMath";
 import { TonnetzProps, NodeData, EdgeData, VirtualBounds } from "../types/tonnetz";
+import { TonnetzNode, TonnetzEdge, calculateNodeRadius } from "./TonnetzElements";
 import "./Tonnetz.css"; // Импортируем CSS файл для стилей
 
 // Функция для получения цвета из спектра для ноты
@@ -89,52 +90,26 @@ function hslToRgb(h: number, s: number, l: number): string {
 
 export default function MinimalShiftTonnetz({
     highlightNotes = [],
-    highlightChords = [],
     rows = 7,
     cols = 7,
-    nodeSize = 0.5, // Значение по умолчанию - средний размер
-
-    // Значения по умолчанию для цветов
+    nodeSize = 0.5,
     highlightedNodeColor = "#ff00ff",
     nodeColor = "white",
     textColor = "black",
     edgeColor = "black",
     nodeStrokeColor = "black",
-
-    // Время перехода в миллисекундах
     transitionDuration = 300,
-
-    // Цветовой спектр
     useColorSpectrum = true,
-
-    // Настройки для активных нот
     activeSpectrumSaturation = 0.6,
     activeSpectrumBrightness = 0.4,
-
-    // Настройки для неактивных нот
     inactiveSpectrumSaturation = 0.2,
-    inactiveSpectrumBrightness = 0.8,
-
-    // Прозрачность неактивных нот (новый параметр)
+    inactiveSpectrumBrightness = 0.45,
     inactiveOpacity = 0.65
 }: TonnetzProps) {
-    // Используем useMemo для создания allHighlightedNotes, чтобы избежать пересоздания при каждом рендере
-    const allHighlightedNotes = useMemo(() => {
-        // Проверяем, есть ли аккорды или ноты для выделения
-        if (highlightNotes.length === 0 && highlightChords.length === 0) {
-            return [];
-        }
-
-        return [
-            ...highlightNotes,
-            ...chordsToNotes(highlightChords)
-        ];
-    }, [highlightNotes, highlightChords]);
-
     // Используем useMemo для создания highlightSet
     const highlightSet = useMemo(() => {
-        return new Set(allHighlightedNotes.map(n => n.toUpperCase()));
-    }, [allHighlightedNotes]);
+        return new Set(highlightNotes.map(n => n.toUpperCase()));
+    }, [highlightNotes]);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = useState(600);
@@ -192,12 +167,15 @@ export default function MinimalShiftTonnetz({
         transition: `fill ${transitionDuration}ms ease-in-out, opacity ${transitionDuration}ms ease-in-out`
     };
 
+    // Прозрачность для рёбер
+    const edgeOpacity = 0.3;
+
     return (
         <div ref={containerRef} style={{ width: "100%" }}>
             <svg
                 width="100%"
-                height={scaledHeight || 400} // Предотвращаем NaN
-                viewBox={`0 0 ${containerWidth} ${scaledHeight || 400}`} // Предотвращаем NaN
+                height={scaledHeight || 400}
+                viewBox={`0 0 ${containerWidth} ${scaledHeight || 400}`}
                 style={{ border: "1px solid #ccc" }}
             >
                 {/* Рёбра */}
@@ -207,107 +185,59 @@ export default function MinimalShiftTonnetz({
 
                     if (!fromNode || !toNode) return null;
 
-                    const x1 = (fromNode.virtualX + offsetX) * scale;
-                    const y1 = (fromNode.virtualY + offsetY) * scale;
-                    const x2 = (toNode.virtualX + offsetX) * scale;
-                    const y2 = (toNode.virtualY + offsetY) * scale;
-
-                    // Определяем, является ли ребро соединением между выделенными нотами
-                    const fromHighlighted = highlightSet.has(fromNode.noteName.toUpperCase());
-                    const toHighlighted = highlightSet.has(toNode.noteName.toUpperCase());
-                    const edgeOpacity = (fromHighlighted && toHighlighted) ? 1 : inactiveOpacity;
+                    const fromX = (fromNode.virtualX + offsetX) * scale;
+                    const fromY = (fromNode.virtualY + offsetY) * scale;
+                    const toX = (toNode.virtualX + offsetX) * scale;
+                    const toY = (toNode.virtualY + offsetY) * scale;
 
                     return (
-                        <line
+                        <TonnetzEdge
                             key={idx}
-                            x1={x1}
-                            y1={y1}
-                            x2={x2}
-                            y2={y2}
-                            stroke={edgeColor}
-                            strokeWidth={1}
-                            opacity={edgeOpacity}
-                            style={transitionStyle}
+                            fromX={fromX}
+                            fromY={fromY}
+                            toX={toX}
+                            toY={toY}
+                            edgeColor={edgeColor}
+                            edgeOpacity={edgeOpacity}
+                            transitionStyle={transitionStyle}
                         />
                     );
                 })}
 
                 {/* Узлы */}
-                {nodes.map((nd, i) => {
-                    const noteName = nd.noteName.toUpperCase();
+                {nodes.map((node, i) => {
+                    const noteName = node.noteName.toUpperCase();
                     const isHighlighted = highlightSet.has(noteName);
 
-                    const x = (nd.virtualX + offsetX) * scale;
-                    const y = (nd.virtualY + offsetY) * scale;
+                    const x = (node.virtualX + offsetX) * scale;
+                    const y = (node.virtualY + offsetY) * scale;
 
-                    // Вычисляем размер узла на основе nodeSize
-                    const minNodeRadius = VIRTUAL_STEP * scale * 0.05;
-                    const maxNodeRadius = VIRTUAL_STEP * scale * 0.45;
-                    const nodeRadius = minNodeRadius + (maxNodeRadius - minNodeRadius) * nodeSize;
-
-                    // Размер шрифта пропорционален размеру узла
-                    const fontSize = nodeRadius * 0.9;
-
-                    // Определяем цвет узла
-                    let fillColor;
-                    if (useColorSpectrum) {
-                        // Используем цветовой спектр с отдельными настройками для активных и неактивных нот
-                        fillColor = getNoteColor(
-                            nd.noteName,
-                            isHighlighted,
-                            activeSpectrumSaturation,
-                            activeSpectrumBrightness,
-                            inactiveSpectrumSaturation,
-                            inactiveSpectrumBrightness
-                        );
-                    } else {
-                        // Используем обычные цвета
-                        fillColor = isHighlighted ? highlightedNodeColor : nodeColor;
-                    }
+                    // Вычисляем размер узла
+                    const nodeRadius = calculateNodeRadius(scale, nodeSize);
 
                     // Устанавливаем прозрачность в зависимости от того, выделена нота или нет
                     const nodeOpacity = isHighlighted ? 1 : inactiveOpacity;
 
                     return (
-                        <g key={i}>
-                            {/* Добавляем эффект свечения для выделенных нот */}
-                            {isHighlighted && (
-                                <circle
-                                    cx={x}
-                                    cy={y}
-                                    r={nodeRadius * 1.2}
-                                    fill="none"
-                                    stroke={useColorSpectrum ? fillColor : highlightedNodeColor}
-                                    strokeWidth={2}
-                                    opacity={0.5}
-                                    style={transitionStyle}
-                                />
-                            )}
-                            <circle
-                                cx={x}
-                                cy={y}
-                                r={nodeRadius}
-                                fill={fillColor}
-                                stroke={isHighlighted ? (useColorSpectrum ? fillColor : highlightedNodeColor) : nodeStrokeColor}
-                                strokeWidth={isHighlighted ? 2 : 1}
-                                opacity={nodeOpacity}
-                                style={transitionStyle}
-                                className="tonnetz-node"
-                            />
-                            <text
-                                x={x}
-                                y={y}
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                                fontSize={fontSize}
-                                fill={isHighlighted ? getInverseColor(fillColor) : textColor}
-                                fontWeight={isHighlighted ? "bold" : "normal"}
-                                opacity={nodeOpacity}
-                                style={transitionStyle}
-                            >
-                                {nd.noteName}
-                            </text>
-                        </g>
+                        <TonnetzNode
+                            key={i}
+                            node={node}
+                            x={x}
+                            y={y}
+                            nodeRadius={nodeRadius}
+                            isHighlighted={isHighlighted}
+                            useColorSpectrum={useColorSpectrum}
+                            highlightedNodeColor={highlightedNodeColor}
+                            nodeColor={nodeColor}
+                            textColor={textColor}
+                            nodeStrokeColor={nodeStrokeColor}
+                            activeSpectrumSaturation={activeSpectrumSaturation}
+                            activeSpectrumBrightness={activeSpectrumBrightness}
+                            inactiveSpectrumSaturation={inactiveSpectrumSaturation}
+                            inactiveSpectrumBrightness={inactiveSpectrumBrightness}
+                            nodeOpacity={nodeOpacity}
+                            transitionStyle={transitionStyle}
+                        />
                     );
                 })}
             </svg>

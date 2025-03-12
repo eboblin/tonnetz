@@ -3,8 +3,8 @@ import React from 'react';
 interface ChordListProps {
     savedChords: string[];
     activeChord: string | null;
-    setActiveChord: (chord: string) => void;
-    removeChord: (chord: string, event: React.MouseEvent) => void;
+    setActiveChord: (chord: string | null) => void;
+    removeChord: (index: number) => void;
     isPlaying: boolean;
     togglePlayback: () => void;
     stopPlayback: () => void;
@@ -84,7 +84,7 @@ const ChordList: React.FC<ChordListProps> = ({
                                 {chord}
                             </button>
                             <button
-                                onClick={(e) => removeChord(chord, e)}
+                                onClick={() => removeChord(savedChords.indexOf(chord))}
                                 style={removeButtonStyle}
                                 title="Remove chord"
                             >

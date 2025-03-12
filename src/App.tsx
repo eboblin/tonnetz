@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import MinimalShiftTonnetz from './components/Tonnetz';
 import ChordSelector from './components/ChordSelector';
 import ChordList from './components/ChordList';
 import ActiveChordDisplay from './components/ActiveChordDisplay';
 import DisplaySettings from './components/DisplaySettings';
+import { chordsToNotes } from './utils/chordParser';
 
 export default function App() {
   // Base notes
@@ -46,18 +47,16 @@ export default function App() {
   // Index of current chord during playback
   const [playIndex, setPlayIndex] = useState(0);
 
-  // Color spectrum settings
-  const [useColorSpectrum, setUseColorSpectrum] = useState(true);
-  const [spectrumSaturation, setSpectrumSaturation] = useState(0.8);
-  const [spectrumBrightness, setSpectrumBrightness] = useState(0.6);
+  // Allways use color spectrum
+  const useColorSpectrum = true;
 
   // Active notes color settings
-  const [activeSpectrumSaturation, setActiveSpectrumSaturation] = useState(0.6);
-  const [activeSpectrumBrightness, setActiveSpectrumBrightness] = useState(0.4);
+  const [activeSpectrumSaturation, setActiveSpectrumSaturation] = useState(0.6); // 60%
+  const [activeSpectrumBrightness, setActiveSpectrumBrightness] = useState(0.4); // 40%
 
   // Inactive notes color settings
-  const [inactiveSpectrumSaturation, setInactiveSpectrumSaturation] = useState(0.2);
-  const [inactiveSpectrumBrightness, setInactiveSpectrumBrightness] = useState(0.8);
+  const [inactiveSpectrumSaturation, setInactiveSpectrumSaturation] = useState(0.2); // 20%
+  const [inactiveSpectrumBrightness, setInactiveSpectrumBrightness] = useState(0.45); // 45%
 
   // Opacity for inactive notes
   const [inactiveOpacity, setInactiveOpacity] = useState(0.65);
@@ -68,178 +67,200 @@ export default function App() {
   // Calculate current chord from selected values
   const currentChord = selectedRoot + selectedModifier;
 
+  // Преобразуем активный аккорд в массив нот для отображения
+  const activeNotes = useMemo(() => {
+    if (!activeChord) return [];
+    return chordsToNotes(activeChord);
+  }, [activeChord]);
+
   // Функция для преобразования BPM в миллисекунды
   const bpmToMs = (bpm: number) => Math.round(60000 / bpm);
 
   // Function to add chord to the list
   const addChord = () => {
-    if (!savedChords.includes(currentChord)) {
+    if (currentChord && !savedChords.includes(currentChord)) {
       setSavedChords([...savedChords, currentChord]);
     }
-    setActiveChord(currentChord);
   };
 
   // Function to remove chord from the list
-  const removeChord = (chord: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent chord activation when removing
-
-    const newChords = savedChords.filter(c => c !== chord);
+  const removeChord = (index: number) => {
+    const newChords = [...savedChords];
+    newChords.splice(index, 1);
     setSavedChords(newChords);
 
-    // If removing active chord, reset active chord
-    if (activeChord === chord) {
+    // If we're removing the active chord, clear it
+    if (activeChord === savedChords[index]) {
       setActiveChord(null);
     }
 
-    // If playback is active, stop it
-    if (isPlaying && newChords.length < 2) {
-      stopPlayback();
-    }
-  };
-
-  // Обновляем функцию playChords, чтобы использовать BPM
-  const playChords = () => {
-    if (savedChords.length < 2) return;
-
-    const nextIndex = (playIndex + 1) % savedChords.length;
-    setActiveChord(savedChords[nextIndex]);
-    setPlayIndex(nextIndex);
-
-    // Используем bpmToMs для расчета времени задержки
-    timerRef.current = window.setTimeout(playChords, bpmToMs(bpm));
-  };
-
-  // Обновляем togglePlayback, чтобы использовать BPM
-  const togglePlayback = () => {
+    // If we're playing and remove a chord, we need to adjust
     if (isPlaying) {
-      // Остановка воспроизведения
-      if (timerRef.current !== null) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+      if (newChords.length < 2) {
+        // Stop playback if we have less than 2 chords
+        stopPlayback();
+      } else if (playIndex >= newChords.length) {
+        // Adjust playIndex if it's now out of bounds
+        setPlayIndex(newChords.length - 1);
       }
-      setIsPlaying(false);
-    } else {
-      // Начало воспроизведения
-      setIsPlaying(true);
-      setPlayIndex(0);
-      setActiveChord(savedChords[0]);
-
-      // Используем bpmToMs для расчета времени задержки
-      timerRef.current = window.setTimeout(playChords, bpmToMs(bpm));
     }
   };
 
-  // Function to stop playback
+  // Функция для остановки воспроизведения
   const stopPlayback = () => {
-    setIsPlaying(false);
     if (timerRef.current !== null) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    setIsPlaying(false);
+    setPlayIndex(0);
+    setActiveChord(null);
   };
 
-  // Effect for managing playback
-  useEffect(() => {
-    if (isPlaying && savedChords.length > 0) {
-      // Clear previous timer
-      if (timerRef.current !== null) {
-        clearTimeout(timerRef.current);
-      }
+  // Функция для переключения воспроизведения
+  const togglePlayback = () => {
+    if (isPlaying) {
+      stopPlayback();
+    } else if (savedChords.length >= 2) {
+      setIsPlaying(true);
+      setPlayIndex(0);
+      setActiveChord(savedChords[0]);
+    }
+  };
 
-      // Set timer for next chord
-      timerRef.current = window.setTimeout(() => {
-        // Calculate next index
-        const nextIndex = (playIndex + 1) % savedChords.length;
-        setPlayIndex(nextIndex);
-        setActiveChord(savedChords[nextIndex]);
-      }, bpmToMs(bpm));
+  // Эффект для управления воспроизведением
+  useEffect(() => {
+    if (!isPlaying || savedChords.length < 2) {
+      return;
     }
 
-    // Cleanup on unmount
+    const playNextChord = () => {
+      const nextIndex = (playIndex + 1) % savedChords.length;
+      setPlayIndex(nextIndex);
+      setActiveChord(savedChords[nextIndex]);
+    };
+
+    const timerId = setTimeout(playNextChord, bpmToMs(bpm));
+    timerRef.current = timerId;
+
+    return () => {
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+    };
+  }, [isPlaying, playIndex, savedChords, bpm]);
+
+  // Эффект для отслеживания изменений в savedChords
+  useEffect(() => {
+    if (isPlaying && savedChords.length < 2) {
+      stopPlayback();
+    }
+  }, [savedChords.length, isPlaying]);
+
+  // Эффект для очистки при размонтировании
+  useEffect(() => {
     return () => {
       if (timerRef.current !== null) {
         clearTimeout(timerRef.current);
       }
     };
-  }, [isPlaying, playIndex, savedChords, bpm]);
+  }, []);
 
   return (
-    <div style={{
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '20px',
-      fontFamily: 'Arial, sans-serif',
-      color: 'white',
-      background: '#121212'
-    }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>
-        Interactive Tonnetz Explorer
-      </h1>
+    <div style={{ display: 'flex', flexDirection: 'column', padding: '20px', gap: '20px' }}>
+      <h1>Tonnetz Chord Visualizer</h1>
 
-      <div style={{ marginBottom: '30px' }}>
-        {/* Chord Selection */}
-        <ChordSelector
-          rootNotes={rootNotes}
-          chordModifiers={chordModifiers}
-          selectedRoot={selectedRoot}
-          selectedModifier={selectedModifier}
-          setSelectedRoot={setSelectedRoot}
-          setSelectedModifier={setSelectedModifier}
-          addChord={addChord}
-        />
+      <div style={{ display: 'flex', gap: '20px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          {/* Chord Selector */}
+          <ChordSelector
+            rootNotes={rootNotes}
+            chordModifiers={chordModifiers}
+            selectedRoot={selectedRoot}
+            setSelectedRoot={setSelectedRoot}
+            selectedModifier={selectedModifier}
+            setSelectedModifier={setSelectedModifier}
+            currentChord={currentChord}
+            addChord={addChord}
+          />
 
-        {/* Chord List */}
-        <ChordList
-          savedChords={savedChords}
-          activeChord={activeChord}
-          setActiveChord={setActiveChord}
-          removeChord={removeChord}
-          isPlaying={isPlaying}
-          togglePlayback={togglePlayback}
-          stopPlayback={stopPlayback}
-        />
+          {/* Chord List */}
+          <ChordList
+            savedChords={savedChords}
+            activeChord={activeChord}
+            setActiveChord={setActiveChord}
+            removeChord={removeChord}
+            isPlaying={isPlaying}
+            togglePlayback={togglePlayback}
+            stopPlayback={stopPlayback}
+          />
 
-        {/* Active Chord Display */}
-        <ActiveChordDisplay activeChord={activeChord} />
+          {/* Playback Tempo Control */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            marginTop: '15px',
+            marginBottom: '15px',
+            padding: '10px',
+            backgroundColor: '#1e1e1e',
+            borderRadius: '5px'
+          }}>
+            <label style={{ minWidth: '180px' }}>Playback Tempo: {bpm} BPM</label>
+            <input
+              type="range"
+              min="30"
+              max="240"
+              step="1"
+              value={bpm}
+              onChange={(e) => setBpm(parseInt(e.target.value))}
+              disabled={isPlaying}
+              style={{ flex: 1 }}
+            />
+          </div>
 
-        {/* Display Settings */}
-        <DisplaySettings
-          nodeSize={nodeSize}
-          setNodeSize={setNodeSize}
-          transitionDuration={transitionDuration}
-          setTransitionDuration={setTransitionDuration}
-          bpm={bpm}
-          setBpm={setBpm}
-          isPlaying={isPlaying}
-          useColorSpectrum={useColorSpectrum}
-          setUseColorSpectrum={setUseColorSpectrum}
-          activeSpectrumSaturation={activeSpectrumSaturation}
-          setActiveSpectrumSaturation={setActiveSpectrumSaturation}
-          activeSpectrumBrightness={activeSpectrumBrightness}
-          setActiveSpectrumBrightness={setActiveSpectrumBrightness}
-          inactiveSpectrumSaturation={inactiveSpectrumSaturation}
-          setInactiveSpectrumSaturation={setInactiveSpectrumSaturation}
-          inactiveSpectrumBrightness={inactiveSpectrumBrightness}
-          setInactiveSpectrumBrightness={setInactiveSpectrumBrightness}
-          inactiveOpacity={inactiveOpacity}
-          setInactiveOpacity={setInactiveOpacity}
-        />
-      </div>
+          {/* Active Chord Display */}
+          <ActiveChordDisplay activeChord={activeChord} />
 
-      <div style={{ width: '100%', height: '500px' }}>
-        <MinimalShiftTonnetz
-          highlightChords={activeChord ? [activeChord] : []}
-          rows={9}
-          cols={11}
-          nodeSize={nodeSize}
-          transitionDuration={transitionDuration}
-          useColorSpectrum={useColorSpectrum}
-          activeSpectrumSaturation={activeSpectrumSaturation}
-          activeSpectrumBrightness={activeSpectrumBrightness}
-          inactiveSpectrumSaturation={inactiveSpectrumSaturation}
-          inactiveSpectrumBrightness={inactiveSpectrumBrightness}
-          inactiveOpacity={inactiveOpacity}
-        />
+          {/* Display Settings */}
+          <DisplaySettings
+            nodeSize={nodeSize}
+            setNodeSize={setNodeSize}
+            transitionDuration={transitionDuration}
+            setTransitionDuration={setTransitionDuration}
+            activeSpectrumSaturation={activeSpectrumSaturation}
+            setActiveSpectrumSaturation={setActiveSpectrumSaturation}
+            activeSpectrumBrightness={activeSpectrumBrightness}
+            setActiveSpectrumBrightness={setActiveSpectrumBrightness}
+            inactiveSpectrumSaturation={inactiveSpectrumSaturation}
+            setInactiveSpectrumSaturation={setInactiveSpectrumSaturation}
+            inactiveSpectrumBrightness={inactiveSpectrumBrightness}
+            setInactiveSpectrumBrightness={setInactiveSpectrumBrightness}
+            inactiveOpacity={inactiveOpacity}
+            setInactiveOpacity={setInactiveOpacity}
+            bpm={bpm}
+            setBpm={setBpm}
+            isPlaying={isPlaying}
+            useColorSpectrum={useColorSpectrum}
+            setUseColorSpectrum={() => true}
+          />
+        </div>
+
+        <div style={{ width: '100%', height: '500px' }}>
+          <MinimalShiftTonnetz
+            highlightNotes={activeNotes}
+            rows={9}
+            cols={11}
+            nodeSize={nodeSize}
+            transitionDuration={transitionDuration}
+            useColorSpectrum={useColorSpectrum}
+            activeSpectrumSaturation={activeSpectrumSaturation}
+            activeSpectrumBrightness={activeSpectrumBrightness}
+            inactiveSpectrumSaturation={inactiveSpectrumSaturation}
+            inactiveSpectrumBrightness={inactiveSpectrumBrightness}
+            inactiveOpacity={inactiveOpacity}
+          />
+        </div>
       </div>
     </div>
   );

@@ -2,11 +2,12 @@ import React from 'react';
 
 interface ChordSelectorProps {
     rootNotes: string[];
-    chordModifiers: { value: string; label: string }[];
+    chordModifiers: { value: string; label: string; }[];
     selectedRoot: string;
     selectedModifier: string;
     setSelectedRoot: (root: string) => void;
     setSelectedModifier: (modifier: string) => void;
+    currentChord: string;
     addChord: () => void;
 }
 
@@ -17,6 +18,7 @@ const ChordSelector: React.FC<ChordSelectorProps> = ({
     selectedModifier,
     setSelectedRoot,
     setSelectedModifier,
+    currentChord,
     addChord
 }) => {
     // Styles

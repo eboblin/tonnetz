@@ -31,8 +31,7 @@ export type Vector = {
 
 // Пропсы для компонента Tonnetz
 export interface TonnetzProps {
-    highlightNotes?: string[];
-    highlightChords?: string[];
+    highlightNotes: string[]; // Массив нот для выделения
     rows?: number;
     cols?: number;
     nodeSize?: number; // От 0 до 1, где 0 - очень маленькие, 1 - очень большие

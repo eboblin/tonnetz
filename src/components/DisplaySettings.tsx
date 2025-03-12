@@ -2,24 +2,24 @@ import React from 'react';
 
 interface DisplaySettingsProps {
     nodeSize: number;
-    setNodeSize: (size: number) => void;
+    setNodeSize: (value: number) => void;
     transitionDuration: number;
-    setTransitionDuration: (duration: number) => void;
+    setTransitionDuration: (value: number) => void;
     bpm: number;
-    setBpm: (bpm: number) => void;
+    setBpm: (value: number) => void;
     isPlaying: boolean;
     useColorSpectrum: boolean;
-    setUseColorSpectrum: (use: boolean) => void;
+    setUseColorSpectrum: (value: boolean) => void;
     activeSpectrumSaturation: number;
-    setActiveSpectrumSaturation: (saturation: number) => void;
+    setActiveSpectrumSaturation: (value: number) => void;
     activeSpectrumBrightness: number;
-    setActiveSpectrumBrightness: (brightness: number) => void;
+    setActiveSpectrumBrightness: (value: number) => void;
     inactiveSpectrumSaturation: number;
-    setInactiveSpectrumSaturation: (saturation: number) => void;
+    setInactiveSpectrumSaturation: (value: number) => void;
     inactiveSpectrumBrightness: number;
-    setInactiveSpectrumBrightness: (brightness: number) => void;
+    setInactiveSpectrumBrightness: (value: number) => void;
     inactiveOpacity: number;
-    setInactiveOpacity: (opacity: number) => void;
+    setInactiveOpacity: (value: number) => void;
 }
 
 const DisplaySettings: React.FC<DisplaySettingsProps> = ({
