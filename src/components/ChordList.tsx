@@ -1,7 +1,12 @@
 import React from 'react';
 
+interface ParsedChord {
+    chord: string;
+    duration: number;
+}
+
 interface ChordListProps {
-    savedChords: string[];
+    savedChords: ParsedChord[];
     activeChord: string | null;
     setActiveChord: (chord: string | null) => void;
     removeChord: (index: number) => void;
@@ -70,7 +75,7 @@ const ChordList: React.FC<ChordListProps> = ({
                         Add chords to display
                     </div>
                 ) : (
-                    savedChords.map(chord => (
+                    savedChords.map(({ chord, duration }) => (
                         <div key={chord} style={{ position: 'relative', marginRight: '8px', marginBottom: '8px' }}>
                             <button
                                 onClick={() => {
@@ -80,9 +85,12 @@ const ChordList: React.FC<ChordListProps> = ({
                                 style={chordButtonStyle(activeChord === chord)}
                             >
                                 {chord}
+                                <span style={{ fontSize: '0.8em', opacity: 0.7 }}>
+                                    {duration === 1 ? '' : ` (${duration})`}
+                                </span>
                             </button>
                             <button
-                                onClick={() => removeChord(savedChords.indexOf(chord))}
+                                onClick={() => removeChord(savedChords.indexOf({ chord, duration }))}
                                 style={removeButtonStyle}
                                 title="Remove chord"
                             >

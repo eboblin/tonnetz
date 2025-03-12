@@ -6,6 +6,12 @@ import ActiveChordDisplay from './components/ActiveChordDisplay';
 import DisplaySettings from './components/DisplaySettings';
 import { chordsToNotes } from './utils/chordParser';
 
+// Добавляем новый тип
+interface ParsedChord {
+  chord: string;
+  duration: number;
+}
+
 export default function App() {
   // Base notes
   const rootNotes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -27,7 +33,7 @@ export default function App() {
   const [selectedModifier, setSelectedModifier] = useState("");
 
   // List of saved chords (initially empty)
-  const [savedChords, setSavedChords] = useState<string[]>([]);
+  const [savedChords, setSavedChords] = useState<ParsedChord[]>([]);
 
   // Active chord for display (initially null)
   const [activeChord, setActiveChord] = useState<string | null>(null);
@@ -73,13 +79,13 @@ export default function App() {
     return chordsToNotes(activeChord);
   }, [activeChord]);
 
-  // Функция для преобразования BPM в миллисекунды
-  const bpmToMs = (bpm: number) => Math.round(60000 / bpm);
+  // Обновляем функцию для преобразования BPM в миллисекунды с учетом длительности
+  const bpmToMs = (bpm: number, duration: number) => Math.round((60000 / bpm) * duration * 2);
 
   // Function to add chord to the list
   const addChord = () => {
-    if (currentChord && !savedChords.includes(currentChord)) {
-      setSavedChords([...savedChords, currentChord]);
+    if (currentChord && !savedChords.some(c => c.chord === currentChord)) {
+      setSavedChords([...savedChords, { chord: currentChord, duration: 1 }]);
     }
   };
 
@@ -90,7 +96,7 @@ export default function App() {
     setSavedChords(newChords);
 
     // If we're removing the active chord, clear it
-    if (activeChord === savedChords[index]) {
+    if (activeChord === savedChords[index].chord) {
       setActiveChord(null);
     }
 
@@ -124,11 +130,11 @@ export default function App() {
     } else if (savedChords.length > 0) {
       setIsPlaying(true);
       setPlayIndex(0);
-      setActiveChord(savedChords[0]);
+      setActiveChord(savedChords[0].chord);
     }
   };
 
-  // Эффект для управления воспроизведением
+  // Обновляем эффект для воспроизведения
   useEffect(() => {
     if (!isPlaying || savedChords.length === 0) {
       return;
@@ -137,10 +143,11 @@ export default function App() {
     const playNextChord = () => {
       const nextIndex = (playIndex + 1) % savedChords.length;
       setPlayIndex(nextIndex);
-      setActiveChord(savedChords[nextIndex]);
+      setActiveChord(savedChords[nextIndex].chord);
     };
 
-    const timerId = setTimeout(playNextChord, bpmToMs(bpm));
+    const currentChord = savedChords[playIndex];
+    const timerId = setTimeout(playNextChord, bpmToMs(bpm, currentChord.duration));
     timerRef.current = timerId;
 
     return () => {
@@ -166,10 +173,10 @@ export default function App() {
     };
   }, []);
 
-  // Новая функция для обработки списка аккордов из textarea
-  const handleParseChords = (chords: string[]) => {
-    setSavedChords(chords);
-    setActiveChord(chords[0]);
+  // Обновляем функцию handleParseChords
+  const handleParseChords = (parsedChords: ParsedChord[]) => {
+    setSavedChords(parsedChords);
+    setActiveChord(parsedChords[0].chord);
     setPlayIndex(0);
   };
 
@@ -184,7 +191,7 @@ export default function App() {
             onParseChords={handleParseChords}
             isPlaying={isPlaying}
             togglePlayback={togglePlayback}
-            savedChords={savedChords}
+            savedChords={savedChords.map(c => c.chord)}
           />
 
           {/* Chord List */}
