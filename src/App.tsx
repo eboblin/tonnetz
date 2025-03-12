@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import MinimalShiftTonnetz from './components/Tonnetz';
-import ChordSelector from './components/ChordSelector';
+import ChordInput from './components/ChordInput';
 import ChordList from './components/ChordList';
 import ActiveChordDisplay from './components/ActiveChordDisplay';
 import DisplaySettings from './components/DisplaySettings';
@@ -121,7 +121,7 @@ export default function App() {
   const togglePlayback = () => {
     if (isPlaying) {
       stopPlayback();
-    } else if (savedChords.length >= 2) {
+    } else if (savedChords.length > 0) {
       setIsPlaying(true);
       setPlayIndex(0);
       setActiveChord(savedChords[0]);
@@ -130,7 +130,7 @@ export default function App() {
 
   // Эффект для управления воспроизведением
   useEffect(() => {
-    if (!isPlaying || savedChords.length < 2) {
+    if (!isPlaying || savedChords.length === 0) {
       return;
     }
 
@@ -152,7 +152,7 @@ export default function App() {
 
   // Эффект для отслеживания изменений в savedChords
   useEffect(() => {
-    if (isPlaying && savedChords.length < 2) {
+    if (isPlaying && savedChords.length === 0) {
       stopPlayback();
     }
   }, [savedChords.length, isPlaying]);
@@ -166,22 +166,25 @@ export default function App() {
     };
   }, []);
 
+  // Новая функция для обработки списка аккордов из textarea
+  const handleParseChords = (chords: string[]) => {
+    setSavedChords(chords);
+    setActiveChord(chords[0]);
+    setPlayIndex(0);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', padding: '20px', gap: '20px' }}>
       <h1>Tonnetz Chord Visualizer</h1>
 
       <div style={{ display: 'flex', gap: '20px' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          {/* Chord Selector */}
-          <ChordSelector
-            rootNotes={rootNotes}
-            chordModifiers={chordModifiers}
-            selectedRoot={selectedRoot}
-            setSelectedRoot={setSelectedRoot}
-            selectedModifier={selectedModifier}
-            setSelectedModifier={setSelectedModifier}
-            currentChord={currentChord}
-            addChord={addChord}
+          {/* Заменяем ChordSelector на ChordInput */}
+          <ChordInput
+            onParseChords={handleParseChords}
+            isPlaying={isPlaying}
+            togglePlayback={togglePlayback}
+            savedChords={savedChords}
           />
 
           {/* Chord List */}
@@ -191,7 +194,6 @@ export default function App() {
             setActiveChord={setActiveChord}
             removeChord={removeChord}
             isPlaying={isPlaying}
-            togglePlayback={togglePlayback}
             stopPlayback={stopPlayback}
           />
 

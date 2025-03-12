@@ -6,7 +6,6 @@ interface ChordListProps {
     setActiveChord: (chord: string | null) => void;
     removeChord: (index: number) => void;
     isPlaying: boolean;
-    togglePlayback: () => void;
     stopPlayback: () => void;
 }
 
@@ -16,7 +15,6 @@ const ChordList: React.FC<ChordListProps> = ({
     setActiveChord,
     removeChord,
     isPlaying,
-    togglePlayback,
     stopPlayback
 }) => {
     // Styles
@@ -94,23 +92,6 @@ const ChordList: React.FC<ChordListProps> = ({
                     ))
                 )}
 
-                {savedChords.length >= 2 && (
-                    <button
-                        onClick={togglePlayback}
-                        style={playButtonStyle}
-                        title={isPlaying ? "Stop" : "Play"}
-                    >
-                        {isPlaying ? (
-                            <>
-                                <span style={{ fontSize: '18px' }}>⏹</span> Stop
-                            </>
-                        ) : (
-                            <>
-                                <span style={{ fontSize: '18px' }}>▶</span> Play
-                            </>
-                        )}
-                    </button>
-                )}
             </div>
         </div>
     );
