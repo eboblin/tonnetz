@@ -258,8 +258,8 @@ export default function App() {
         <div style={{ width: '100%', height: '500px' }}>
           <MinimalShiftTonnetz
             highlightNotes={activeNotes}
-            rows={9}
-            cols={11}
+            rows={14}
+            cols={10}
             nodeSize={nodeSize}
             transitionDuration={transitionDuration}
             useColorSpectrum={useColorSpectrum}

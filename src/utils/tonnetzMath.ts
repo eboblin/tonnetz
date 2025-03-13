@@ -6,7 +6,7 @@ export const NOTE_NAMES = [
     "F#", "G", "G#", "A", "A#", "B",
 ];
 
-// Виртуальные координаты для расчетов
+// Виртуальные координаты для расчётов
 export const VIRTUAL_STEP = 100; // Базовый шаг в виртуальных координатах
 
 // Векторы (горизонталь = квинта +7, диагональ = +3)
@@ -22,13 +22,17 @@ export function getPitchClass(i: number, j: number): number {
     return ((offset % 12) + 12) % 12;
 }
 
-// Функция "минимального" чередования
+/**
+ * Изменённая функция "минимального" чередования.
+ * Теперь каждая вторая строка смещается "вправо" на +1.
+ *
+ * rowIndex (0-based) — номер строки от 0 до rows-1
+ */
 export function minimalShift(rowIndex: number): number {
-    // Закономерность: каждые 2 ряда сдвиг увеличивается на -1
-    return -Math.floor((rowIndex + 1) / 2);
+    return -Math.floor(rowIndex / 2)
 }
 
-// Вычисляем минимальные и максимальные индексы на основе переданных rows и cols
+// Вычисляем минимальные и максимальные индексы
 export function calculateIndices(rows: number, cols: number) {
     const MIN_J = -Math.floor(rows / 2);
     const MAX_J = MIN_J + rows - 1;
@@ -38,7 +42,7 @@ export function calculateIndices(rows: number, cols: number) {
     return { MIN_I, MAX_I, MIN_J, MAX_J };
 }
 
-// Генерирует узлы и рёбра для Tonnetz
+// Генерация Tonnetz
 export function generateTonnetzData(rows: number, cols: number): {
     nodes: NodeData[];
     edges: EdgeData[];
@@ -54,14 +58,20 @@ export function generateTonnetzData(rows: number, cols: number): {
         const rowIndex = j - MIN_J;
         const shift = minimalShift(rowIndex);
 
-        const rowMinI = MIN_I + shift;
-        const rowMaxI = MAX_I + shift;
+        // Базовые границы для данного ряда
+        let rowMinI = MIN_I + shift;
+        let rowMaxI = MAX_I + shift;
+
+        // Каждая вторая строка (нечётный rowIndex) короче на 1 клавишу
+        if (rowIndex % 2 === 1) {
+            rowMaxI -= 1;
+        }
 
         for (let i = rowMinI; i <= rowMaxI; i++) {
             const pitchClass = getPitchClass(i, j);
             const noteName = NOTE_NAMES[pitchClass];
 
-            // Вычисляем виртуальные координаты
+            // Виртуальные координаты
             const virtualX = i * vP5.x + j * vM3.x;
             const virtualY = i * vP5.y + j * vM3.y;
 
@@ -87,7 +97,6 @@ export function generateTonnetzData(rows: number, cols: number): {
         return `${i},${j}`;
     }
 
-    // Сохраняем индексы узлов
     for (let idx = 0; idx < nodes.length; idx++) {
         const nd = nodes[idx];
         keyMap.set(coordKey(nd.i, nd.j), idx);
@@ -100,24 +109,28 @@ export function generateTonnetzData(rows: number, cols: number): {
         const rowIndex = j - MIN_J;
         const shift = minimalShift(rowIndex);
 
-        const rowMinI = MIN_I + shift;
-        const rowMaxI = MAX_I + shift;
+        let rowMinI = MIN_I + shift;
+        let rowMaxI = MAX_I + shift;
+
+        if (rowIndex % 2 === 1) {
+            rowMaxI -= 1;
+        }
 
         for (let i = rowMinI; i <= rowMaxI; i++) {
             const currIdx = keyMap.get(coordKey(i, j));
             if (currIdx === undefined) continue;
 
-            // Горизонталь
+            // Горизонталь (+7)
             const rightIdx = keyMap.get(coordKey(i + 1, j));
             if (rightIdx !== undefined) {
                 edges.push({ from: currIdx, to: rightIdx });
             }
-            // +3
+            // +3 (вертикаль вверх)
             const upIdx = keyMap.get(coordKey(i, j + 1));
             if (upIdx !== undefined) {
                 edges.push({ from: currIdx, to: upIdx });
             }
-            // +4
+            // +4 (диагональ)
             const diagIdx = keyMap.get(coordKey(i + 1, j - 1));
             if (diagIdx !== undefined) {
                 edges.push({ from: currIdx, to: diagIdx });
@@ -152,7 +165,7 @@ export function calculateScaling(
     const scale = containerWidth / scaledVirtualWidth;
     const scaledHeight = Math.max(1, scaledVirtualHeight * scale);
 
-    // Смещение для центрирования
+    // Смещение для "центрирования"
     const offsetX = -virtualBounds.minX + paddingX;
     const offsetY = -virtualBounds.minY + paddingY;
 
@@ -162,4 +175,4 @@ export function calculateScaling(
         offsetX,
         offsetY
     };
-} 
+}

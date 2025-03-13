@@ -10,8 +10,8 @@ import "./Tonnetz.css"; // Импортируем CSS файл для стиле
 
 export default function MinimalShiftTonnetz({
     highlightNotes = [],
-    rows = 7,
-    cols = 7,
+    rows = 5,
+    cols = 5,
     nodeSize = 0.5,
     highlightedNodeColor = "#ff00ff",
     nodeColor = "white",
