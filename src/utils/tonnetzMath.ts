@@ -29,7 +29,7 @@ export function getPitchClass(i: number, j: number): number {
  * rowIndex (0-based) — номер строки от 0 до rows-1
  */
 export function minimalShift(rowIndex: number): number {
-    return -Math.floor(rowIndex / 2)
+    return -Math.floor((rowIndex - 0.5) / 2)
 }
 
 // Вычисляем минимальные и максимальные индексы
@@ -63,7 +63,7 @@ export function generateTonnetzData(rows: number, cols: number): {
         let rowMaxI = MAX_I + shift;
 
         // Каждая вторая строка (нечётный rowIndex) короче на 1 клавишу
-        if (rowIndex % 2 === 1) {
+        if (rowIndex % 2 === 0) {
             rowMaxI -= 1;
         }
 
